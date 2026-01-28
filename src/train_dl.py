@@ -1,17 +1,17 @@
+import copy
+import os
+
+import matplotlib.pyplot as plt
 import pandas as pd
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader
+from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import r2_score, mean_squared_error
-import matplotlib.pyplot as plt
-import os
-import copy
+from torch.utils.data import DataLoader, Dataset
 
-# --- 1. Dataset Class ---
 class TimeSeriesDataset(Dataset):
+    """Wrap feature and target arrays into a PyTorch Dataset."""
     def __init__(self, X, y):
         self.X = torch.tensor(X, dtype=torch.float32)
         self.y = torch.tensor(y, dtype=torch.float32).view(-1, 1)
@@ -22,8 +22,8 @@ class TimeSeriesDataset(Dataset):
     def __getitem__(self, idx):
         return self.X[idx], self.y[idx]
 
-# --- 2. Model Definitions ---
 class MLP(nn.Module):
+    """A simple multilayer perceptron for tabular regression."""
     def __init__(self, input_dim):
         super(MLP, self).__init__()
         self.layers = nn.Sequential(
@@ -39,19 +39,20 @@ class MLP(nn.Module):
         return self.layers(x)
 
 class LSTMModel(nn.Module):
+    """An LSTM-based regressor for tabular time-series features."""
     def __init__(self, input_dim, hidden_dim=64, num_layers=2):
         super(LSTMModel, self).__init__()
         self.lstm = nn.LSTM(input_dim, hidden_dim, num_layers, batch_first=True, dropout=0.2)
         self.fc = nn.Linear(hidden_dim, 1)
 
     def forward(self, x):
-        x = x.unsqueeze(1) 
+        x = x.unsqueeze(1)
         out, _ = self.lstm(x)
-        out = out[:, -1, :] 
+        out = out[:, -1, :]
         return self.fc(out)
 
-# --- 3. Training Helper ---
 def train_model(model, train_loader, val_loader, epochs=100, lr=0.001, patience=15):
+    """Train a model with early stopping and return losses."""
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
     
@@ -78,7 +79,6 @@ def train_model(model, train_loader, val_loader, epochs=100, lr=0.001, patience=
         epoch_train_loss = running_loss / len(train_loader.dataset)
         train_losses.append(epoch_train_loss)
 
-        # Validation
         model.eval()
         running_val_loss = 0.0
         with torch.no_grad():
@@ -93,7 +93,6 @@ def train_model(model, train_loader, val_loader, epochs=100, lr=0.001, patience=
         if (epoch + 1) % 10 == 0:
             print(f"Epoch {epoch+1} | Train Loss: {epoch_train_loss:.4f} | Val Loss: {epoch_val_loss:.4f}")
 
-        # Early Stopping
         if epoch_val_loss < best_loss:
             best_loss = epoch_val_loss
             best_weights = copy.deepcopy(model.state_dict())
@@ -108,70 +107,57 @@ def train_model(model, train_loader, val_loader, epochs=100, lr=0.001, patience=
         model.load_state_dict(best_weights)
     return model, train_losses, val_losses
 
-# --- 4. Main Execution ---
 def run_deep_learning():
-    # Load Data
+    """Train deep learning models on engineered volatility features."""
     data_path = os.path.join("data", "processed", "sp500_clean.csv")
     df = pd.read_csv(data_path, index_col=0, parse_dates=True)
 
-    # Feature Selection
     drop_cols = ['Target_Vol', 'Log_Return']
     feature_cols = [c for c in df.columns if c not in drop_cols and ('Lag' in c or 'Roll' in c)]
-    
-    X = df[feature_cols].values
-    y = df['Target_Vol'].values.reshape(-1, 1) # Reshape for scaler
 
-    # Splits
+    X = df[feature_cols].values
+    y = df['Target_Vol'].values.reshape(-1, 1)
+
     train_mask = df.index < '2015-01-01'
     val_mask = (df.index >= '2015-01-01') & (df.index < '2020-01-01')
-    
+
     X_train, y_train = X[train_mask], y[train_mask]
     X_val, y_val = X[val_mask], y[val_mask]
 
-    # --- SCALING (Target Scaling Added!) ---
     scaler_X = StandardScaler()
     X_train_scaled = scaler_X.fit_transform(X_train)
     X_val_scaled = scaler_X.transform(X_val)
-    
+
     scaler_y = StandardScaler()
     y_train_scaled = scaler_y.fit_transform(y_train)
-    y_val_scaled = scaler_y.transform(y_val) # Scale val target for loss calculation
+    y_val_scaled = scaler_y.transform(y_val)
 
-    # Create DataLoaders
     batch_size = 64
     train_dataset = TimeSeriesDataset(X_train_scaled, y_train_scaled)
     val_dataset = TimeSeriesDataset(X_val_scaled, y_val_scaled)
-    
+
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
-    # Setup
     input_dim = X_train.shape[1]
     results = {}
-    
-    # --- Train MLP ---
+
     mlp = MLP(input_dim)
-    mlp, t_loss, v_loss = train_model(mlp, train_loader, val_loader)
+    mlp, _, _ = train_model(mlp, train_loader, val_loader)
     results['MLP'] = mlp
-    
-    # --- Train LSTM ---
+
     lstm = LSTMModel(input_dim)
-    lstm, t_loss_lstm, v_loss_lstm = train_model(lstm, train_loader, val_loader)
+    lstm, _, _ = train_model(lstm, train_loader, val_loader)
     results['LSTM'] = lstm
 
-    # --- Final Evaluation (Inverse Transform) ---
     print("\n--- Final Results (Validation Set - Unscaled) ---")
-    
-    # Helper to inverse transform and evaluate
-    def eval_and_plot(model, name, color):
+
+    def eval_and_plot(model, name):
         model.eval()
         with torch.no_grad():
-            # Predict (Scaled)
             preds_scaled = model(torch.tensor(X_val_scaled, dtype=torch.float32)).numpy()
-            # Inverse Transform to get real volatility units
             preds_real = scaler_y.inverse_transform(preds_scaled)
-            
-            # Metrics
+
             mse = mean_squared_error(y_val, preds_real)
             r2 = r2_score(y_val, preds_real)
             print(f"{name}: MSE={mse:.8f}, R2={r2:.6f}")
@@ -180,13 +166,13 @@ def run_deep_learning():
     plt.figure(figsize=(15, 6))
     val_indices = df.index[val_mask]
     plot_mask = (val_indices >= '2018-01-01') & (val_indices <= '2018-12-31')
-    
+
     plt.plot(val_indices[plot_mask], y_val[plot_mask], label='Actual', color='black', alpha=0.5)
-    
-    preds_mlp = eval_and_plot(results['MLP'], "MLP", "blue")
+
+    preds_mlp = eval_and_plot(results['MLP'], "MLP")
     plt.plot(val_indices[plot_mask], preds_mlp[plot_mask], label='MLP', linestyle='--')
-    
-    preds_lstm = eval_and_plot(results['LSTM'], "LSTM", "orange")
+
+    preds_lstm = eval_and_plot(results['LSTM'], "LSTM")
     plt.plot(val_indices[plot_mask], preds_lstm[plot_mask], label='LSTM', linestyle='--')
 
     plt.title('Deep Learning Models (With Target Scaling)')

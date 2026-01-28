@@ -1,22 +1,22 @@
-import pandas as pd
-import numpy as np
 import os
 
+import numpy as np
+import pandas as pd
+
 def process_data():
+    """Clean raw S&P 500 data and engineer volatility features."""
     input_path = os.path.join("data", "raw", "sp500_raw.csv")
     if not os.path.exists(input_path):
         print(f"Error: File not found at {input_path}")
         return
 
     print("Processing data...")
-    # Load data
     try:
         df = pd.read_csv(input_path, index_col=0, parse_dates=True)
     except Exception as e:
         print(f"Error reading CSV: {e}")
         return
 
-    # 1. Identify Price Column
     if 'Adj Close' in df.columns:
         price_col = 'Adj Close'
     elif 'Close' in df.columns:
@@ -25,30 +25,20 @@ def process_data():
         price_col = df.columns[0]
         print(f"Warning: Using '{price_col}' as price column.")
 
-    # --- CRITICAL FIX START ---
-    # Force the column to be numeric. Any non-numeric value becomes NaN.
-    # This fixes the "TypeError: '>' not supported between instances of 'str' and 'int'"
     df[price_col] = pd.to_numeric(df[price_col], errors='coerce')
-    # --- CRITICAL FIX END ---
 
-    # 2. Data Cleaning
     df[price_col] = df[price_col].ffill()
     df = df.dropna(subset=[price_col])
 
-    # 3. Feature Engineering
     valid_prices = df[price_col] > 0
     df = df.loc[valid_prices].copy()
-    
-    # Calculate Log Returns
+
     df['Log_Return'] = np.log(df[price_col] / df[price_col].shift(1))
-    
-    # Replace infinite values with NaN
+
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
-    
-    # Target: Realized Volatility
+
     df['Target_Vol'] = df['Log_Return'] ** 2
 
-    # Lags and Rolling Windows
     for lag in range(1, 6):
         df[f'Vol_Lag_{lag}'] = df['Target_Vol'].shift(lag)
         df[f'Return_Lag_{lag}'] = df['Log_Return'].shift(lag)
@@ -56,7 +46,6 @@ def process_data():
     df['Vol_Roll_Mean_5'] = df['Target_Vol'].rolling(window=5).mean().shift(1)
     df['Vol_Roll_Mean_21'] = df['Target_Vol'].rolling(window=21).mean().shift(1)
 
-    # 4. Final Cleanup
     df_clean = df.dropna()
 
     if df_clean.empty:

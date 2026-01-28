@@ -1,7 +1,6 @@
-import yfinance as yf
 import os
-import requests_cache
 import requests
+import yfinance as yf
 
 def fetch_sp500_data():
     """
@@ -14,13 +13,11 @@ def fetch_sp500_data():
 
     print(f"Downloading data for {ticker_symbol}...")
     
-    # 1. Create a custom session to trick Yahoo into thinking we are a browser
     session = requests.Session()
     session.headers.update({
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
     })
 
-    # 2. Use the session in yf.download
     try:
         data = yf.download(ticker_symbol, start=start_date, end=end_date, session=session)
     except Exception as e:
@@ -31,9 +28,6 @@ def fetch_sp500_data():
         print("No data found. (You might still be rate-limited. Try Option 2 below).")
         return
 
-    # Ensure directories exist
-    # Note: I see you are using 'src', so I assume 'data' is at the root level relative to where you run the script.
-    # If running from root: data/raw/
     raw_path = os.path.join("data", "raw")
     os.makedirs(raw_path, exist_ok=True)
     
