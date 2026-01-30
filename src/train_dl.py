@@ -114,12 +114,6 @@ def run_deep_learning():
 
     drop_cols = ['Target_Vol', 'Log_Return']
     feature_cols = [c for c in df.columns if c not in drop_cols and ('Lag' in c or 'Roll' in c)]
-<<<<<<< HEAD
-    
-    X = df[feature_cols].values
-    y = df['Target_Vol'].values.reshape(-1, 1)
-=======
->>>>>>> ff582cc8e2b184679bb2b63991c145557faffe36
 
     X = df[feature_cols].values
     y = df['Target_Vol'].values.reshape(-1, 1)
@@ -130,10 +124,6 @@ def run_deep_learning():
     X_train, y_train = X[train_mask], y[train_mask]
     X_val, y_val = X[val_mask], y[val_mask]
 
-<<<<<<< HEAD
-    # scaling
-=======
->>>>>>> ff582cc8e2b184679bb2b63991c145557faffe36
     scaler_X = StandardScaler()
     X_train_scaled = scaler_X.fit_transform(X_train)
     X_val_scaled = scaler_X.transform(X_val)
@@ -151,29 +141,13 @@ def run_deep_learning():
 
     input_dim = X_train.shape[1]
     results = {}
-<<<<<<< HEAD
-    
-    # Train MLP
-=======
-
->>>>>>> ff582cc8e2b184679bb2b63991c145557faffe36
     mlp = MLP(input_dim)
     mlp, _, _ = train_model(mlp, train_loader, val_loader)
     results['MLP'] = mlp
-<<<<<<< HEAD
-    
-    # Train LSTM
-=======
-
->>>>>>> ff582cc8e2b184679bb2b63991c145557faffe36
     lstm = LSTMModel(input_dim)
     lstm, _, _ = train_model(lstm, train_loader, val_loader)
     results['LSTM'] = lstm
 
-<<<<<<< HEAD
-    # Final Evaluation (Inverse Transform)
-=======
->>>>>>> ff582cc8e2b184679bb2b63991c145557faffe36
     print("\n--- Final Results (Validation Set - Unscaled) ---")
 
     def eval_and_plot(model, name):

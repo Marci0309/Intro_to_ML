@@ -28,10 +28,6 @@ def fetch_sp500_data():
         print("No data found. (You might still be rate-limited. Try Option 2 below).")
         return
 
-<<<<<<< HEAD
-    # Ensure directories exist
-=======
->>>>>>> ff582cc8e2b184679bb2b63991c145557faffe36
     raw_path = os.path.join("data", "raw")
     os.makedirs(raw_path, exist_ok=True)
     

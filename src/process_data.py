@@ -32,19 +32,11 @@ def process_data():
 
     valid_prices = df[price_col] > 0
     df = df.loc[valid_prices].copy()
-<<<<<<< HEAD
-    
-    df['Log_Return'] = np.log(df[price_col] / df[price_col].shift(1))
-    
-    df.replace([np.inf, -np.inf], np.nan, inplace=True)
-    
-=======
 
     df['Log_Return'] = np.log(df[price_col] / df[price_col].shift(1))
 
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
 
->>>>>>> ff582cc8e2b184679bb2b63991c145557faffe36
     df['Target_Vol'] = df['Log_Return'] ** 2
 
     for lag in range(1, 6):
