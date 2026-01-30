@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 import os
 import copy
 
-# --- 1. Dataset Class ---
 class TimeSeriesDataset(Dataset):
     def __init__(self, X, y):
         self.X = torch.tensor(X, dtype=torch.float32)
@@ -22,7 +21,6 @@ class TimeSeriesDataset(Dataset):
     def __getitem__(self, idx):
         return self.X[idx], self.y[idx]
 
-# --- 2. Model Definitions ---
 class MLP(nn.Module):
     def __init__(self, input_dim):
         super(MLP, self).__init__()
@@ -50,7 +48,6 @@ class LSTMModel(nn.Module):
         out = out[:, -1, :] 
         return self.fc(out)
 
-# --- 3. Training Helper ---
 def train_model(model, train_loader, val_loader, epochs=100, lr=0.001, patience=15):
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
@@ -108,7 +105,6 @@ def train_model(model, train_loader, val_loader, epochs=100, lr=0.001, patience=
         model.load_state_dict(best_weights)
     return model, train_losses, val_losses
 
-# --- 4. Main Execution ---
 def run_deep_learning():
     # Load Data
     data_path = os.path.join("data", "processed", "sp500_clean.csv")
@@ -119,7 +115,7 @@ def run_deep_learning():
     feature_cols = [c for c in df.columns if c not in drop_cols and ('Lag' in c or 'Roll' in c)]
     
     X = df[feature_cols].values
-    y = df['Target_Vol'].values.reshape(-1, 1) # Reshape for scaler
+    y = df['Target_Vol'].values.reshape(-1, 1)
 
     # Splits
     train_mask = df.index < '2015-01-01'
@@ -128,14 +124,14 @@ def run_deep_learning():
     X_train, y_train = X[train_mask], y[train_mask]
     X_val, y_val = X[val_mask], y[val_mask]
 
-    # --- SCALING (Target Scaling Added!) ---
+    # scaling
     scaler_X = StandardScaler()
     X_train_scaled = scaler_X.fit_transform(X_train)
     X_val_scaled = scaler_X.transform(X_val)
     
     scaler_y = StandardScaler()
     y_train_scaled = scaler_y.fit_transform(y_train)
-    y_val_scaled = scaler_y.transform(y_val) # Scale val target for loss calculation
+    y_val_scaled = scaler_y.transform(y_val)
 
     # Create DataLoaders
     batch_size = 64
@@ -149,17 +145,17 @@ def run_deep_learning():
     input_dim = X_train.shape[1]
     results = {}
     
-    # --- Train MLP ---
+    # Train MLP
     mlp = MLP(input_dim)
     mlp, t_loss, v_loss = train_model(mlp, train_loader, val_loader)
     results['MLP'] = mlp
     
-    # --- Train LSTM ---
+    # Train LSTM
     lstm = LSTMModel(input_dim)
     lstm, t_loss_lstm, v_loss_lstm = train_model(lstm, train_loader, val_loader)
     results['LSTM'] = lstm
 
-    # --- Final Evaluation (Inverse Transform) ---
+    # Final Evaluation (Inverse Transform)
     print("\n--- Final Results (Validation Set - Unscaled) ---")
     
     # Helper to inverse transform and evaluate
@@ -168,7 +164,6 @@ def run_deep_learning():
         with torch.no_grad():
             # Predict (Scaled)
             preds_scaled = model(torch.tensor(X_val_scaled, dtype=torch.float32)).numpy()
-            # Inverse Transform to get real volatility units
             preds_real = scaler_y.inverse_transform(preds_scaled)
             
             # Metrics
