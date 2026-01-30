@@ -1,7 +1,8 @@
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 import os
+
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
 
 def run_eda():
     """
@@ -23,18 +24,20 @@ def run_eda():
     plot_dir = "plots"
     os.makedirs(plot_dir, exist_ok=True)
 
+<<<<<<< HEAD
     # Plot 1: Volatility Clusters & Time Splits 
 
+=======
+>>>>>>> ff582cc8e2b184679bb2b63991c145557faffe36
     plt.figure(figsize=(14, 6))
     plt.plot(df.index, df['Target_Vol'], label='Realized Volatility (Squared Returns)', alpha=0.7, linewidth=0.8)
-    
-    # Highlight Split Regions (approximate dates based on Proposal)
-    # Train: Start - 2015
-    # Val: 2015 - 2020
-    # Test: 2020 - Present
     plt.axvline(pd.Timestamp('2015-01-01'), color='r', linestyle='--', alpha=0.8)
     plt.axvline(pd.Timestamp('2020-01-01'), color='r', linestyle='--', alpha=0.8)
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> ff582cc8e2b184679bb2b63991c145557faffe36
     plt.text(pd.Timestamp('2000-01-01'), df['Target_Vol'].max()*0.8, 'TRAINING SET', color='red', fontsize=12)
     plt.text(pd.Timestamp('2016-06-01'), df['Target_Vol'].max()*0.8, 'VAL', color='red', fontsize=12)
     plt.text(pd.Timestamp('2022-01-01'), df['Target_Vol'].max()*0.8, 'TEST', color='red', fontsize=12)
@@ -46,8 +49,11 @@ def run_eda():
     plt.close()
     print("Saved: volatility_clusters.png")
 
+<<<<<<< HEAD
     # Plot 2: Feature Correlation Heatmap
 
+=======
+>>>>>>> ff582cc8e2b184679bb2b63991c145557faffe36
     feature_cols = ['Target_Vol'] + [c for c in df.columns if 'Lag' in c or 'Roll' in c]
     corr_matrix = df[feature_cols].corr()
 
@@ -59,8 +65,11 @@ def run_eda():
     plt.close()
     print("Saved: feature_correlations.png")
 
+<<<<<<< HEAD
     # Plot 3: Distribution of Returns
     
+=======
+>>>>>>> ff582cc8e2b184679bb2b63991c145557faffe36
     plt.figure(figsize=(10, 6))
     sns.histplot(df['Log_Return'], bins=100, kde=True, color='blue')
     plt.title('Distribution of Daily Log Returns')
